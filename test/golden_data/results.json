@@ -1,0 +1,135 @@
+
+{
+"output_files": [
+        {
+            "name": "top_structures",
+            "source_id": [
+                ""
+            ],
+            "taxon_id": "",
+            "meta_data": {
+            },
+            "file_path": "test_project/top_structures.pdb"
+        },
+        {
+            "name": "results",
+            "source_id": [
+                ""
+            ],
+            "taxon_id": "",
+            "meta_data": {
+            },
+            "file_path": "test_project/test_project.tgz"
+        },
+        {
+            "name": "energy_table",
+            "source_id": [
+                ""
+            ],
+            "taxon_id": "",
+            "meta_data": {
+            },
+            "file_path": "test_project/result.csv"
+        },
+        {
+            "name": "top10",
+            "source_id": [
+                ""
+            ],
+            "taxon_id": "",
+            "meta_data": {
+            },
+            "file_path": "test_project/top_1.pdb"
+        },
+        {
+            "name": "top10",
+            "source_id": [
+                ""
+            ],
+            "taxon_id": "",
+            "meta_data": {
+            },
+            "file_path": "test_project/top_2.pdb"
+        },
+        {
+            "name": "top10",
+            "source_id": [
+                ""
+            ],
+            "taxon_id": "",
+            "meta_data": {
+            },
+            "file_path": "test_project/top_3.pdb"
+        },
+        {
+            "name": "top10",
+            "source_id": [
+                ""
+            ],
+            "taxon_id": "",
+            "meta_data": {
+            },
+            "file_path": "test_project/top_4.pdb"
+        },
+        {
+            "name": "top10",
+            "source_id": [
+                ""
+            ],
+            "taxon_id": "",
+            "meta_data": {
+            },
+            "file_path": "test_project/top_5.pdb"
+        },
+        {
+            "name": "top10",
+            "source_id": [
+                ""
+            ],
+            "taxon_id": "",
+            "meta_data": {
+            },
+            "file_path": "test_project/top_6.pdb"
+        },
+        {
+            "name": "top10",
+            "source_id": [
+                ""
+            ],
+            "taxon_id": "",
+            "meta_data": {
+            },
+            "file_path": "test_project/top_7.pdb"
+        },
+        {
+            "name": "top10",
+            "source_id": [
+                ""
+            ],
+            "taxon_id": "",
+            "meta_data": {
+            },
+            "file_path": "test_project/top_8.pdb"
+        },
+        {
+            "name": "top10",
+            "source_id": [
+                ""
+            ],
+            "taxon_id": "",
+            "meta_data": {
+            },
+            "file_path": "test_project/top_9.pdb"
+        },
+        {
+            "name": "top10",
+            "source_id": [
+                ""
+            ],
+            "taxon_id": "",
+            "meta_data": {
+            },
+            "file_path": "test_project/top_10.pdb"
+        }
+        ]
+}
