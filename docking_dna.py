@@ -7,6 +7,7 @@ import subprocess
 import shutil
 import glob
 import json
+from utils import logger
 
 
 """ Script configuration """
@@ -20,7 +21,8 @@ scoring_script = 'parallel_scoring.py'
 models_dest_folder = 'models'
 models_prefix = 'mug_'
 results_csv_file = 'result.csv'
-mock_folder = "/home/user/bin/mug/mock/3mfk"
+mock_folder_dna = "/home/user/bin/mug/mock/3mfk"
+mock_folder_protein = "/home/user/bin/mug/mock/3mfk_monomers"
 top_models = 10
 """ End of configuration """
 
@@ -61,7 +63,8 @@ def read_config(config_json_file):
     data = None
     receptor_id = None
     ligand_id = None
-    project = None
+    project_path = None
+    project_name = None
     models = None
     scoring = None
     try:
@@ -74,15 +77,16 @@ def read_config(config_json_file):
                 ligand_id = data['input_files'][1]['value']
                 receptor_id = data['input_files'][0]['value']
             for argument in data['arguments']:
-                if argument['name'] == 'project':
-                    project = argument['value']
+                if argument['name'] == 'execution':
+                    project_path = argument['value']
+                    project_name = os.path.basename(project_path)
                 if argument['name'] == 'models':
                     models = argument['value']
                 if argument['name'] == 'scoring':
                     scoring = argument['value']
     except Exception, e:
-        print 'Error reading config JSON: %s' % str(e)
-    return receptor_id, ligand_id, project, int(models), scoring
+        logger.error('Error reading config JSON: %s' % str(e))
+    return receptor_id, ligand_id, project_path, project_name, int(models), scoring
 
 
 def read_metadata(metadata_json_file):
@@ -93,7 +97,7 @@ def read_metadata(metadata_json_file):
             for argument in data:
                 metadata[argument['_id']] = argument
     except Exception, e:
-        print 'Error reading metadata JSON: %s' % str(e)
+        logger.error('Error reading metadata JSON: %s' % str(e))
     return metadata
 
 
@@ -127,11 +131,9 @@ def ene_to_csv(ene_file, csv_file, top=100, has_header=True):
                 line_count += 1
 
 
-def prepare_workspace(abs_path, project_name, log_file):
+def prepare_workspace(project_path, log_file):
     """Prepares the workspace"""
-    print "[WORKSPACE] Started"
-    project_path = os.path.join(abs_path, project_name)
-
+    logger.progress("Preparing workspace", status="RUNNING")
     # Create project path if required
     if not os.path.exists(project_path):
         os.makedirs(project_path)
@@ -142,60 +144,60 @@ def prepare_workspace(abs_path, project_name, log_file):
         os.makedirs(tmp_path)
 
     # Calculate the uploads path
-    source_data_path = os.path.join(abs_path, uploads_folder_name)
+    source_data_path = os.path.join(project_path, uploads_folder_name)
 
     # Calculate the results path
     results_path = project_path
 
-    print "[WORKSPACE] Finished"
+    logger.progress("Preparing workspace", status="DONE")
     return source_data_path, tmp_path, results_path
 
 
 def setup_molecules(working_path, receptor_pdb, ligand_pdb, project_name):
     with cd(working_path):
-        print '[SETUP] Started'
+        logger.progress("Setup", status="RUNNING")
         command = "%s %s %s %s" % (ini_file_script, project_name, receptor_pdb, ligand_pdb)
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
-        print 'Waiting for pid %s' % str(process.pid)
+        #print 'Waiting for pid %s' % str(process.pid)
         process.wait()
         command = "%s %s setup > setup.log" % (pydock_bin, project_name)
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
-        print 'Waiting for pid %s' % str(process.pid)
+        #print 'Waiting for pid %s' % str(process.pid)
         process.wait()
-        print '[SETUP] Finished'
+        logger.progress("Setup", status="DONE")
         return os.path.join(working_path, "%s_rec.pdb" % project_name), os.path.join(working_path, "%s_lig.pdb" % project_name)
 
 
-def sampling(working_path, receptor_pdb, ligand_pdb, project_name, num_cores, mock=False):
+def sampling(working_path, receptor_pdb, ligand_pdb, project_name, num_cores, mock=False, mock_folder=""):
     with cd(working_path):
-        print '[SAMPLING] Started'
+        logger.progress("Sampling", status="RUNNING")
         if not mock:
             command = "%s %s %s %s %s" % (sampling_script, project_name, receptor_pdb, ligand_pdb, str(num_cores))
             process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
-            print 'Waiting for pid %s' % str(process.pid)
+            #print 'Waiting for pid %s' % str(process.pid)
             process.wait()
             command = "%s %s rotftdock" % (pydock_bin, project_name)
             process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
-            print 'Waiting for pid %s' % str(process.pid)
+            #print 'Waiting for pid %s' % str(process.pid)
             process.wait()
         else:
             shutil.copy2(os.path.join(mock_folder, '3mfk.ftdock'), os.path.join(working_path, "%s.ftdock" % project_name))
             shutil.copy2(os.path.join(mock_folder, '3mfk.rot'), os.path.join(working_path, "%s.rot" % project_name))
-        print '[SAMPLING] Finished'
+        logger.progress("Sampling", status="DONE")
         return os.path.join(working_path, "%s.ftdock" % project_name)
 
 
-def scoring(working_path, project_name, num_cores, mock=False):
+def scoring(working_path, project_name, num_cores, scoring_module="dockser", mock=False, mock_folder=""):
     with cd(working_path):
-        print '[SCORING] Started'
+        logger.progress("Scoring", status="RUNNING")
         if not mock:
-            command = "%s %s %s" % (scoring_script, project_name, str(num_cores))
+            command = "%s %s %s %s" % (scoring_script, project_name, str(num_cores), scoring_module)
             process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
-            print 'Waiting for pid %s' % str(process.pid)
+            #print 'Waiting for pid %s' % str(process.pid)
             process.wait()
         else:
             shutil.copy2(os.path.join(mock_folder, '3mfk.ene'), os.path.join(working_path, "%s.ene" % project_name))
-        print '[SCORING] Finished'
+        logger.progress("Scoring", status="DONE")
         return os.path.join(working_path, "%s.ene" % project_name)
 
 
@@ -204,24 +206,29 @@ def create_top_structures(working_path, models_refix, project_name, top, file_na
         with open(file_name, 'w') as output:
             num_model = 1
             for conf in top:
-                pdb_file_name = "%s%s_%s.pdb" % (models_prefix, project_name, conf)
-                with open(pdb_file_name) as input_pdb:
-                    output.write('MODEL %d\n' % num_model)
-                    for line in input_pdb:
-                        output.write(line)
-                    output.write('ENDMDL\n')
-                num_model += 1
+                try:
+                    pdb_file_name = "%s%s_%s.pdb" % (models_prefix, project_name, conf)
+                    with open(pdb_file_name) as input_pdb:
+                        output.write('MODEL %d\n' % num_model)
+                        for line in input_pdb:
+                            output.write(line)
+                        output.write('ENDMDL\n')
+                    num_model += 1
+                except IOError:
+                    pass
 
 
 def generate_models(working_path, project_name, num_models):
     with cd(working_path):
-        print '[MODELS_GENERATOR] Started'
+        logger.progress("Generating models", status="RUNNING")
         command = "%s %s makePDB 1 %s %s.ene %s" % (pydock_bin, project_name, str(num_models), project_name, models_prefix)
+	#print 'Generating structures: %s' % str(command)
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
-        print 'Waiting for pid %s' % str(process.pid)
+        #print 'Waiting for pid %s' % str(process.pid)
         process.wait()
         # Keep the top
         top = get_top_from_ene("%s.ene" % project_name, top=top_models)
+	#print 'Top structures are: %s' % str(top)
         create_top_structures(working_path, models_prefix, project_name, top, 'top_structures.pdb')
         # Create top 10
         for i in range(top_models):
@@ -234,14 +241,14 @@ def generate_models(working_path, project_name, num_models):
         models = glob.glob("%s*.pdb" % models_prefix)
         for model in models:
             shutil.move(model, models_path)
-        print '[MODELS_GENERATOR] Finished'
+        logger.progress("Generating models", status="DONE")
         return True
 
 
 def clean_workspace(working_path, project_name):
     """Cleans the workspace from temporal folder and scratch files"""
     with cd(working_path):
-        print '[CLEANING] Started'
+        logger.progress("Cleaning", status="RUNNING")
         # Remove scoring temporal folders
         temp_folders = glob.glob('tmp_pyDock*')
         for folder in temp_folders:
@@ -261,7 +268,7 @@ def clean_workspace(working_path, project_name):
             os.remove('%s.ftdock.log' % project_name)
         except:
             pass
-        print '[CLEANING] Finished'
+        logger.progress("Cleaning", status="DONE")
 
 
 def create_compress_results(working_path, project_name):
@@ -465,39 +472,47 @@ def check_output(file_name):
 
 def run_pipeline(args, num_cores):
     # Prepare all required parameters to run the pipeline
-    receptor_id, ligand_id, project_name, num_models, scoring_function = read_config(args.config)
+    receptor_id, ligand_id, project_path, project_name, num_models, scoring_function = read_config(args.config)
     
-    metadata = read_metadata(args.metadata)
+    metadata = read_metadata(args.in_metadata)
 
-    receptor_pdb_file = os.path.join(args.root_dir, metadata[receptor_id]['file_path'])
-    ligand_pdb_file = os.path.join(args.root_dir, metadata[ligand_id]['file_path'])
-    abs_path = args.root_dir
+    receptor_pdb_file = metadata[receptor_id]['file_path']
+    ligand_pdb_file = metadata[ligand_id]['file_path']
 
     # Log file
-    log_file = os.path.join(args.root_dir, project_name, ".tool.log")
+    log_file = args.log_file
 
     # Prepare workspace and get the relevant paths for the pipeline
-    source_data_path, working_path, results_path = prepare_workspace(abs_path, project_name, log_file)
+    source_data_path, working_path, results_path = prepare_workspace(project_path, log_file)
 
     # Setup molecules
     receptor_pdb, ligand_pdb = setup_molecules(working_path, receptor_pdb_file, ligand_pdb_file, project_name)
    
     # Activate mocks if required
     mocking = False
+    mock_folder = ""
     rec_file = os.path.basename(metadata[receptor_id]['file_path'])
     lig_file = os.path.basename(metadata[ligand_id]['file_path'])
     if rec_file == '3mfk_homodimer.pdb' and lig_file == '3mfk_dna.pdb':
         mocking = True
+        mock_folder = mock_folder_dna
+        logger.info("Mocking Protein-DNA: %s" % mock_folder)
+    if (rec_file == '3mfk_monomer2.pdb' and lig_file == '3mfk_monomer1.pdb') or (rec_file == '3mfk_monomer1.pdb' and lig_file == '3mfk_monomer2.pdb'):
+        mocking = True
+        mock_folder = mock_folder_protein
+        logger.info("Mocking Protein-Protein: %s" % mock_folder)
  
     # Sampling step
-    sampling_output_file = sampling(working_path, receptor_pdb, ligand_pdb, project_name, num_cores, mocking)
+    sampling_output_file = sampling(working_path, receptor_pdb, ligand_pdb, project_name, num_cores, mocking, mock_folder)
     if not check_output(sampling_output_file):
-        raise SystemExit('ERROR: Sampling process, FTDock output file not found')
+        logger.error('Sampling process, FTDock output file not found')
+        raise SystemExit
 
     # Energetic scoring step
-    scoring_output_file = scoring(working_path, project_name, num_cores, mocking)
+    scoring_output_file = scoring(working_path, project_name, num_cores, scoring_function, mocking, mock_folder)
     if not check_output(scoring_output_file):
-        raise SystemExit('ERROR: Scoring process, energy table file not found')
+        logger.error('Scoring process, energy table file not found')
+        raise SystemExit
 
     # Generating models step 
     generate_models(working_path, project_name, num_models)
@@ -517,16 +532,13 @@ if __name__ == "__main__":
     # Config file
     parser.add_argument("--config", help="Configuration JSON file", 
                         type=CommandLineParser.valid_file, metavar="config", required=True)
-    # Root dir
-    parser.add_argument("--root_dir", help="Working directory",
-                        type=CommandLineParser.valid_file, metavar="root_dir", required=True)
-    # Public dir
-    parser.add_argument("--public_dir", help="Public directory to upload the results",
-                        metavar="public_dir", required=True)
     # Metadata
-    parser.add_argument("--metadata", help="Project metadata", metavar="metadata", required=True)
+    parser.add_argument("--in_metadata", help="Project metadata", metavar="in_metadata", required=True)
     # Output metadata
     parser.add_argument("--out_metadata", help="Output metadata", metavar="output_metadata", required=True)
+
+    # Log file
+    parser.add_argument("--log_file", help="Log file", metavar="log_file", required=True)
 
     args = parser.parse_args()
 

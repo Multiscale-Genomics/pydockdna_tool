@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Custom user
+export BIN_FOLDER=/home/user/bin
+
+# FTDOCK
+export PATH=$PATH:$BIN_FOLDER/ftdock
+
+# PyDock3
+export PATH=$PATH:$BIN_FOLDER/pydock3/pydock3:$BIN_FOLDER/pydock3/pydock3/parallel
+export PYTHONPATH=$PYTHONPATH:$BIN_FOLDER/pydock3/pydock3/
+
+# Support scripts
+export PATH=$PATH:$BIN_FOLDER/support:$BIN_FOLDER/mug
+
+python /home/user/bin/mug/docking_dna.py $@
